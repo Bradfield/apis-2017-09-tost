@@ -8,18 +8,35 @@ info:
     url: 'http://opensource.org/licenses/MIT'
 schemes:
   https
+# securityDefinitions:
+#   apiKey:
+#     type: apiKey
+#     in: header
+#    name: TOST-API-KEY
+
 securityDefinitions:
-  apiKey:
-    type: apiKey
-    in: header
-    name: TOST-API-KEY
+  authtoken:
+    type: string (hex)
+    in: http authentication header # probably not the right swagger term
+
 paths:
   /signup:
+  
+    # $ tost signup alice@example.com
+    # > signing you up ...
+    # > done. you have been emailed an access token
+    
+    # REQ
+    # POST /signup
+    # { body: { email: "alice@example.com", signup-token: "abc123" } }
+    # RES
+    # { user: { id: "105157DC-7A99-4D54-8207-6EDB4536184A", email: "alice@example.com" } }
+
     post:
       summary: create an account
       description: >-
-        Create an account for the given email, on if the account does not
-        already exist.
+        Create an account for the given email, only if the account does not
+        already exist. An email with the user's access token will be sent to them.
       operationId: signup
       consumes:
         - application/json
@@ -33,7 +50,7 @@ paths:
           schema:
             $ref: '#/definitions/UserCreate'
       security:
-        - apiKey: []
+        - authtoken: []
       responses:
         "200":
           description: A user record
@@ -45,10 +62,27 @@ paths:
             $ref: '#/definitions/Error'
         default:
           $ref: '#/responses/Default500ErrorResponse'
-  /login:
-    post:
-      summary: user log-in
-      description: TODO, need to learn more about security first
+
+
+  # $ tost signin 4561e50a-423c-4852-93f5-63001fd782cc
+  # > signing you in ...
+  # > incorrect auth token
+
+  /authcheck:
+    get:
+      summary: tells you if your auth token is good
+      responses:
+        "200":
+          description: all good
+          schema:
+            $ref: '#/definitions/UserRecord'
+        "400":
+          description: token is bad
+          schema:
+            $ref: '#/definitions/Error'
+
+      
+      
   /document:
     get:
       summary: lists documents
@@ -319,11 +353,14 @@ definitions:
         type: string
   UserRecord:
     type: object
-    properties:
-      id:
-        type: string
-      email:
-        type: string
+    properties: 
+      user:
+        type: object
+        properties:
+          id:
+            type: string
+          email:
+            type: string
   DocumentCreateOrModify:
     type: object
     properties:
