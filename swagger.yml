@@ -1,0 +1,288 @@
+openapi: "3.0.0"
+info:
+  title: tost
+
+# absent or invalid authtoken will result in a 401 response for all endpoints except 'POST /signup'
+security:
+  - authtoken: []
+
+paths:
+
+  # $ tost signup alice@example.com
+  # > signing you up ...
+  # > done. you have been emailed an access token
+  /signup:
+    post:
+      description: Creates user, emails them auth token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          'application/json':
+            example:
+              user:
+                email: alice@example.com
+                signup-token: 1b343171-5a77-4ae4-b696-ca57967ff6ce
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                user:
+                  id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  email: alice@example.com
+        '400':
+          content:
+            'application/json':
+              example:
+                code: 10
+                msg: already signed up with that email
+
+  # $ tost signin 4561e50a-423c-4852-93f5-63001fd782cc
+  # > signing you in ...
+  # > incorrect auth token
+  /authcheck:
+    get:
+      description: Check whether an auth token works.
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                user:
+                  id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  email: alice@example.com
+        "400":
+          content:
+            'application/json':
+              example:
+                code: 20
+                msg: invalid token
+
+
+
+  /tosts:
+    # $ tost list
+    # e7a         2017Q3 projections
+    get:
+      description: List all accessible tosts
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+              - token: e7aa3f47-28de-4782-8f3f-e4663309e897
+                first-line: 2017Q3 projections
+                creator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+
+
+    # $ tost new
+    # > opening your text editor ...
+    # # user enters:
+    # #   2017Q3 projections
+    # #   profits are up
+    # #   costs are down
+    # # then saves
+    # > creating tost ...
+    # > done
+    post:
+      description: >-
+        Creates new tost and associated root-level propegation belonging to this user
+      requestBody:
+        content:
+          'application/json':
+            example:
+              tost:
+                creation-token: 7ab5d70a-6c1a-4229-b94d-a5dbe893bfc6
+                body: |-
+                  2017Q3 projections
+                  profits are up
+                  costs are down
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                tost:
+                  access-token: c01a3179-2126-4388-aace-866d7fab7dc8
+                  creator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  created-at: 1505200572156
+                  updator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  updated-at: 1505200572156
+                  body: |-
+                    2017Q3 projections
+                    profits are up
+                    costs are down
+        '400':
+          content:
+            'application/json':
+              example:
+                code: 30
+                msg: invalid
+                fields:
+                  tost:
+                    body:
+                      - must not be blank
+
+
+  # $ tost show e7aa3f47-28de-4782-8f3f-e4663309e897
+  # > downloading ...
+  # > id: 43076e69-136c-4562-a5da-d190dc11dcdb
+  # 2017Q3 projections
+  # profits are up
+  # costs are down
+  /tost/{access-token}:
+    get:
+      description: >-
+        Fetch tost by access token.
+        The access token of the retrieved tost may not be the same as the one given in the url.
+        Only if the access token provided is the *current* one associated with some toast and your user will the retrieved one be a match.
+        If the token provided is further up the propegation chain then your token will become a *direct* descendant of it. If this is your first access of this toast then your access token will be created then made a direct descendant, otherwise it will just be moved.
+        If the token provided is a descendant of your token you will still see your token in the retrieved tost.
+        If your token has been disabled you will get an error.
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                tost:
+                  access-token: 43076e69-136c-4562-a5da-d190dc11dcdb
+                  creator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  created-at: 1505200572156
+                  updator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  updated-at: 1505200572156
+                  body: |-
+                    2017Q3 projections
+                    profits are up
+                    costs are down
+        '404':
+          description: Access token either does not exist or has been disabled
+          content:
+            'application/json':
+              example:
+                code: 40
+                msg: 'tost not found'
+
+    # $ tost edit 43076e69-136c-4562-a5da-d190dc11dcdb
+    # > opening your text editor ...
+    # # user enters:
+    # #   2017Q3 projections
+    # #   profits are down
+    # #   costs are up
+    # # then saves
+    # > updating tost ...
+    # > done
+    put:
+      description: >-
+        Update toast body.
+        The access token of the retrieved tost may not be the same as the one given in the url, for the same reasons as above.
+        The client must provide last-updated-at field to allow the server to implement compare-and-swap semantics.
+        That is, the server will only apply this update if the provided last-updated-at value exactly matches the tost's updated-at field.
+        If they don't match, this request will fail and the access token, new body and new updated-at fields of the tost will be returned.
+        The client should apply a three-way-merge, with the local copy of the previous body as the base.
+      requestBody:
+        content:
+          'application/json':
+            tost:
+              last-updated-at: 1505200572156
+              body: |-
+                2017Q3 projections
+                profits are down
+                costs are up
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                tost:
+                  access-token: 43076e69-136c-4562-a5da-d190dc11dcdb
+                  creator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  created-at: 1505200572156
+                  updator-id: 6fc5599d-e21f-4196-90dd-c7afc409c2d9
+                  updated-at: 1505205054329
+                  body: |-
+                    2017Q3 projections
+                    profits are down
+                    costs are up
+        '400':
+          content:
+            'application/json':
+              msg: 'conflict'
+              code: 50
+              tost:
+                updated-at: 1505205054329
+                access-token: 43076e69-136c-4562-a5da-d190dc11dcdb
+                body: |-
+                  2017Q3 projections
+                  profits are down
+                  costs are up
+
+  /tost/{access-token}/propagations:
+    get:
+      description: >-
+        Fetch all the propegations that *descend* from the one identified by {access-token}.
+        n.b. Descendants only, peer and ancestors propegations cannot be fetched.
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                propegations:
+                - email: 'bob@example.com'
+                  access-token: e3c17055-b05b-42de-b727-555a2289e036
+                  parent-access-token: 43076e69-136c-4562-a5da-d190dc11dcdb
+
+  /tost/{access-token}/propagations/move:
+    post:
+      description: >-
+        Move a propegation to an ancestor.
+        The destination propegation must be a the one identified by {access-token} or a descendant of it.
+        It may not be a descendant of the source propegation.
+        If the source is already a child of the destination then the normal success response is used (making this action safe to replay).
+      requestBody:
+        content:
+          'application/json':
+            example:
+              src-access-token: af1c56d8-5c00-4fc7-950a-f486e8b90f18
+              dst-access-token: 434889af-2b13-49e9-aadc-0d107d03e716
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                moved-to: 434889af-2b13-49e9-aadc-0d107d03e716
+
+        '400':
+          content:
+            'application/json':
+              example:
+                code: 60
+                msg: destination not ancestor
+
+  /tost/{access-token}/propagations/{prop-access-token}/disable:
+    post:
+      description: >-
+        Mark {prop-access-token} as disabled. This will prevent the owner of that propegation and the owners all descendant propagations from accessing the tost identified by {access-token}.
+        An owner of a propagations may not disable themselves.
+      requestBody:
+        content:
+          'application/json':
+            example: {} # empty
+      responses:
+        '200':
+          content:
+            'application/json':
+              example:
+                disabled: 434889af-2b13-49e9-aadc-0d107d03e716
+        '400':
+          content:
+            'application/json':
+              example:
+                code: 70
+                msg: target not descendant of {access-token}
+
+components:
+  securitySchemes:
+    authtoken:
+      type: http
+      scheme: basic

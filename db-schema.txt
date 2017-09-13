@@ -1,0 +1,60 @@
+pgtns (technically what we've been calling "grants" are really propagations)
+
+-- pgtn_id - pkey
+-- pgtn_tost_id
+-- pgtn_user_id
+-- _pgtn_token
+-- _pgtn_parent_id
+-- _pgtn_disabled
+-- _pgtn_archived
+-- __pgtn_ancestor_disabled
+
+tosts (text posts)
+
+-- tost_id - pkey
+-- tost_body - text/blob
+-- tost_creation_token
+-- tost_creator_user_id
+-- tost_create_timestamp
+-- tost_updator_user_id
+-- tost_update_timestamp
+
+users
+
+-- user_id - pkey
+-- user_signup_token
+-- _user_email - string
+-- _user_auth_token
+
+tost_changes
+-- __tost_change_timestamp - pkey
+-- __tost_change_tost_id
+-- tost_change_payload
+
+pgtn_changes
+-- __pgtn_change_timestamp - pkey
+-- __pgtn_change_pgtn_id
+-- pgtn_change_pgtn_token - for redirects
+-- pgtn_change_payload
+
+---
+
+- all field names are full qualified (i.e. unique across all tables)
+
+- single underscore prefix means the field is mutable
+- double underscore prefix means the field is a computed property indented to improve query performance
+
+- all fields ending in _id are random 128bit values (uuids)
+- all fields ending in _token are also random 128bit values
+- zero is the sentinel value for uuid fields
+- all fields ending in _disabled are bools and default to false
+
+- all fields ending in _timestamp are UTC timestamps to microsecond resolution
+
+- all fields ending in _payload should contain a serialized object
+
+---
+
+_pgtn_token
+- refresh to "burn" links in the wild (sitting in inboxes, etc)
+- invariant: unique in pgtns
